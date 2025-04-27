@@ -207,13 +207,11 @@ async function handleOffer(message) {
     console.log('Descrição remota (SDP) configurada.');
 
     const answer = await peerConnection.createAnswer();
-    console.log('Resposta SDP criada:', answer);
-
     await peerConnection.setLocalDescription(answer);
     console.log('Descrição local (SDP) configurada.');
 
     sendMessage({ type: 'answer', sdp: answer.sdp });
-    console.log('Resposta SDP enviada ao outro usuário.');
+    console.log('Resposta SDP enviada.');
   } catch (error) {
     console.error('Erro ao tratar oferta:', error);
   }
@@ -221,16 +219,25 @@ async function handleOffer(message) {
 
 // Trata resposta SDP
 async function handleAnswer(message) {
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
-}
+  console.log('Resposta recebida:', message);
 
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription({
+      type: 'answer',
+      sdp: message.sdp
+    }));
+    console.log('Descrição remota (SDP) configurada com sucesso.');
+  } catch (error) {
+    console.error('Erro ao tratar resposta:', error);
+  }
+}
 // Adiciona candidatos ICE
 function handleCandidate(message) {
   console.log('Candidato ICE recebido:', message.candidate);
 
   try {
-    const candidate = new RTCIceCandidate(message.candidate);
-    peerConnection.addIceCandidate(candidate);
+    const candidate = new RTCIceCandidate(message.candidate); // Cria o candidato
+    peerConnection.addIceCandidate(candidate); // Adiciona o candidato à conexão
     console.log('Candidato ICE adicionado com sucesso.');
   } catch (error) {
     console.error('Erro ao adicionar candidato ICE:', error);
