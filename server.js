@@ -1,29 +1,36 @@
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: process.env.PORT || 8080 });
-const users = {};
+
+const users = {}; // Lista de usuários conectados
 
 server.on('connection', (socket) => {
+  console.log('Novo cliente conectado.');
+
   socket.on('message', (data) => {
     const message = JSON.parse(data);
 
     if (message.type === 'register') {
+      // Registra o usuário conectado
       users[message.id] = socket;
-      broadcastUserList();
+      console.log(`Usuário registrado: ${message.id}`);
+      broadcastUserList(); // Atualiza lista de usuários
     }
 
     if (message.target && users[message.target]) {
-      users[message.target].send(data);
+      users[message.target].send(JSON.stringify(message)); // Reenvia a mensagem ao destinatário
     }
   });
 
   socket.on('close', () => {
+    // Remove o usuário desconectado
     for (const id in users) {
       if (users[id] === socket) {
         delete users[id];
+        console.log(`Usuário desconectado: ${id}`);
         break;
       }
     }
-    broadcastUserList();
+    broadcastUserList(); // Atualiza lista quando alguém sai
   });
 
   function broadcastUserList() {
@@ -32,4 +39,5 @@ server.on('connection', (socket) => {
     Object.values(users).forEach(userSocket => userSocket.send(message));
   }
 });
+
 console.log('Servidor WebSocket rodando...');

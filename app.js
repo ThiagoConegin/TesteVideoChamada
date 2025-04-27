@@ -1,6 +1,6 @@
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
-let localStream; // Fluxo de mídia local (médico ou paciente)
+let localStream; // Fluxo de mídia local
 let peerConnection; // Conexão WebRTC
 
 // Configuração do ICE (STUN) para WebRTC
@@ -14,6 +14,15 @@ const socket = new WebSocket(signalingServerUrl);
 
 socket.onopen = () => {
   console.log('Conexão WebSocket estabelecida!');
+
+  // Solicita ao usuário um ID para registro
+  const userId = prompt('Insira seu ID de usuário (ex.: medico ou paciente):');
+  if (userId) {
+    sendMessage({ type: 'register', id: userId }); // Envia mensagem de registro
+    console.log(`Usuário registrado com ID: ${userId}`);
+  } else {
+    alert('ID de usuário é necessário para registro.');
+  }
 };
 
 socket.onmessage = async (event) => {
@@ -28,28 +37,28 @@ socket.onmessage = async (event) => {
     console.log('Mensagem recebida:', message);
 
     switch (message.type) {
+      case 'users':
+        updatePatientList(message.users); // Atualiza lista de usuários conectados
+        break;
       case 'invite':
-        handleInvite(message);
+        handleInvite(message); // Trata convites recebidos
         break;
       case 'accept':
         console.log(`Paciente ${message.sender} aceitou o atendimento.`);
-        createOffer(); // Médico inicia a chamada
+        createOffer(); // Continua a chamada
         break;
       case 'decline':
         console.log(`Paciente ${message.sender} recusou o atendimento.`);
         alert(`O paciente ${message.sender} recusou o atendimento.`);
         break;
       case 'offer':
-        handleOffer(message);
+        handleOffer(message); // Trata oferta SDP
         break;
       case 'answer':
-        handleAnswer(message);
+        handleAnswer(message); // Trata resposta SDP
         break;
       case 'candidate':
-        handleCandidate(message);
-        break;
-      case 'users':
-        updatePatientList(message.users);
+        handleCandidate(message); // Adiciona candidatos ICE
         break;
       default:
         console.error('Tipo de mensagem desconhecido:', message.type);
@@ -64,7 +73,7 @@ function sendMessage(message) {
   socket.send(JSON.stringify(message));
 }
 
-// Solicita a câmera e microfone
+// Solicita câmera e microfone
 async function getLocalMedia() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -72,21 +81,30 @@ async function getLocalMedia() {
     console.log('Acesso à câmera e microfone concedido!');
   } catch (error) {
     console.error('Erro ao acessar mídia:', error);
-    alert('Por favor, conceda acesso à câmera e microfone.');
+    alert('Conceda permissão à câmera e ao microfone.');
   }
 }
 getLocalMedia();
 
-// Atualiza a lista de pacientes disponíveis
+// Atualiza a lista de usuários conectados no <select>
 function updatePatientList(users) {
   const patientSelect = document.getElementById('patientSelect');
-  patientSelect.innerHTML = '';
+  patientSelect.innerHTML = ''; // Limpa a lista atual
+
   users.forEach(user => {
     const option = document.createElement('option');
     option.value = user.id;
-    option.textContent = user.name || `Paciente ${user.id}`;
+    option.textContent = `Paciente ${user.id}`;
     patientSelect.appendChild(option);
   });
+
+  if (users.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'Nenhum paciente disponível';
+    patientSelect.appendChild(option);
+  }
+
   console.log('Lista de pacientes atualizada:', users);
 }
 
@@ -94,10 +112,12 @@ function updatePatientList(users) {
 function startCall() {
   const patientSelect = document.getElementById('patientSelect');
   const selectedPatient = patientSelect.value;
+
   if (!selectedPatient) {
-    alert('Selecione um paciente para iniciar o atendimento!');
+    alert('Selecione um paciente!');
     return;
   }
+
   sendMessage({ type: 'invite', target: selectedPatient, sender: 'medico' });
   console.log(`Convite enviado ao paciente ${selectedPatient}`);
 }
@@ -108,14 +128,14 @@ function handleInvite(message) {
   if (accept) {
     sendMessage({ type: 'accept', sender: message.sender });
     console.log('Convite aceito.');
-    createOffer(); // Paciente inicia a chamada
+    createOffer();
   } else {
     sendMessage({ type: 'decline', sender: message.sender });
     console.log('Convite recusado.');
   }
 }
 
-// WebRTC: Cria a conexão
+// Cria conexão WebRTC
 function createPeerConnection() {
   const pc = new RTCPeerConnection(iceConfig);
 
@@ -144,7 +164,7 @@ async function createOffer() {
   sendMessage({ type: 'offer', sdp: offer.sdp });
 }
 
-// Recebe oferta SDP
+// Trata oferta SDP
 async function handleOffer(message) {
   peerConnection = createPeerConnection();
   await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
@@ -153,7 +173,7 @@ async function handleOffer(message) {
   sendMessage({ type: 'answer', sdp: answer.sdp });
 }
 
-// Recebe resposta SDP
+// Trata resposta SDP
 async function handleAnswer(message) {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
 }
