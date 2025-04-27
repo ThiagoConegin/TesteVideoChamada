@@ -23,15 +23,18 @@ socket.onmessage = async (event) => {
   try {
     let messageData = event.data;
 
-    // Verifica se o dado recebido é um Blob
     if (messageData instanceof Blob) {
-      messageData = await messageData.text(); // Converte Blob em texto
+      messageData = await messageData.text();
     }
 
-    const message = JSON.parse(messageData); // Agora pode ser convertido em JSON
+    const message = JSON.parse(messageData);
     console.log('Mensagem recebida:', message);
 
-    // Trata os diferentes tipos de mensagens
+    if (!message.type) {
+      console.error('Mensagem recebida sem tipo definido:', message);
+      return;
+    }
+
     switch (message.type) {
       case 'offer':
         handleOffer(message);
@@ -43,13 +46,13 @@ socket.onmessage = async (event) => {
         handleCandidate(message);
         break;
       default:
-        console.log('Tipo de mensagem desconhecido:', message.type);
+        console.error('Tipo de mensagem desconhecido:', message.type);
         break;
     }
   } catch (error) {
     console.error('Erro ao processar a mensagem do WebSocket:', error);
   }
-};
+}
 
 function sendMessage(message) {
   socket.send(JSON.stringify(message));
@@ -114,6 +117,12 @@ async function createOffer() {
 // Trata a oferta recebida de outro usuário
 async function handleOffer(message) {
   console.log("Oferta recebida:", message);
+
+  if (!message.sdp || message.type !== 'offer') {
+    console.error('Mensagem de oferta inválida:', message);
+    return;
+  }
+
   peerConnection = createPeerConnection();
 
   try {
@@ -125,6 +134,7 @@ async function handleOffer(message) {
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     sendMessage({ type: 'answer', sdp: answer.sdp });
+    console.log('Resposta SDP enviada:', answer.sdp);
   } catch (error) {
     console.error('Erro ao tratar oferta:', error);
   }
@@ -146,10 +156,18 @@ async function handleAnswer(message) {
 // Trata os candidatos ICE enviados pelo outro usuário
 function handleCandidate(message) {
   console.log("Candidato ICE recebido:", message.candidate);
+
   try {
-    const candidate = new RTCIceCandidate(message.candidate);
-    peerConnection.addIceCandidate(candidate);
+    if (message.candidate) {
+      const candidate = new RTCIceCandidate(message.candidate);
+      peerConnection.addIceCandidate(candidate);
+      console.log('Candidato ICE adicionado com sucesso:', candidate);
+    } else {
+      console.warn('Candidato ICE inválido:', message.candidate);
+    }
   } catch (error) {
     console.error('Erro ao adicionar candidato ICE:', error);
   }
 }
+
+

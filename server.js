@@ -7,11 +7,17 @@ server.on('connection', socket => {
 
   // Retransmitir mensagens entre os clientes conectados
   socket.on('message', message => {
-    server.clients.forEach(client => {
-      if (client !== socket && client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    });
+    try {
+      const parsedMessage = JSON.parse(message);
+  
+      server.clients.forEach(client => {
+        if (client !== socket && client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(parsedMessage)); // Retransmite com o formato correto
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao retransmitir mensagem:', error);
+    }
   });
 
   socket.on('close', () => {
