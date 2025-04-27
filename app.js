@@ -9,7 +9,7 @@ const iceConfig = {
   ]
 };
 
-// Solicita acesso à câmera e microfone
+// Solicitar acesso à câmera e microfone
 async function requestMedia() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -22,21 +22,21 @@ async function requestMedia() {
   }
 }
 
-// Inicializa a conexão WebRTC
+// Inicializar conexão WebRTC
 function startConnection() {
   peerConnection = new RTCPeerConnection(iceConfig);
 
-  // Adiciona o stream local à conexão
+  // Adicionar stream local à conexão
   localStream.getTracks().forEach(track => {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Recebe o stream remoto
+  // Receber stream remoto
   peerConnection.ontrack = event => {
     remoteVideo.srcObject = event.streams[0];
   };
 
-  // Manipula candidatos ICE
+  // Manipular candidatos ICE
   peerConnection.onicecandidate = event => {
     if (event.candidate) {
       sendMessage({ candidate: event.candidate });
@@ -44,14 +44,14 @@ function startConnection() {
   };
 }
 
-// Função para criar oferta SDP
+// Criar oferta SDP
 async function createOffer() {
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   sendMessage({ sdp: offer });
 }
 
-// Função para criar resposta SDP
+// Criar resposta SDP
 async function createAnswer() {
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
@@ -59,7 +59,7 @@ async function createAnswer() {
 }
 
 // Conexão ao servidor WebSocket
-const socket = new WebSocket('wss://servidor-websocket-ijig.onrender.com'); // Altere para o endereço do servidor
+const socket = new WebSocket('wss://servidor-websocket-ijig.onrender.com');
 socket.onopen = () => {
   console.log('Conexão WebSocket estabelecida!');
 };
@@ -77,10 +77,10 @@ socket.onmessage = event => {
   }
 };
 
-// Envia mensagens ao WebSocket
+// Enviar mensagens ao WebSocket
 function sendMessage(data) {
   socket.send(JSON.stringify(data));
 }
 
-// Solicita mídia ao carregar a página
+// Solicitar mídia ao carregar a página
 requestMedia();
