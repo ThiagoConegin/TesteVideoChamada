@@ -15,14 +15,16 @@ const socket = new WebSocket(signalingServerUrl);
 socket.onopen = () => {
   console.log('Conexão WebSocket estabelecida!');
 
-  // Solicita ao usuário um ID para registro
-  const userId = prompt('Insira seu ID de usuário (ex.: medico ou paciente):');
-  if (userId) {
-    sendMessage({ type: 'register', id: userId }); // Envia mensagem de registro
-    console.log(`Usuário registrado com ID: ${userId}`);
-  } else {
-    alert('ID de usuário é necessário para registro.');
+  let userId = prompt('Insira seu ID único (ex.: Paciente1, Médico):');
+  const userType = userId.toLowerCase().includes('medico') ? 'Medico' : 'Paciente';
+
+  if (!userId || userId.trim() === '') {
+    userId = `Usuario_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`ID gerado automaticamente: ${userId}`);
   }
+
+  sendMessage({ type: 'register', id: userId, typeOfUser: userType });
+  console.log(`Usuário registrado: ${userId} (${userType})`);
 };
 
 socket.onmessage = async (event) => {
@@ -89,27 +91,28 @@ getLocalMedia();
 // Atualiza a lista de usuários conectados no <select>
 function updatePatientList(users) {
   const patientSelect = document.getElementById('patientSelect');
-  patientSelect.innerHTML = ''; // Limpa a lista atual para evitar duplicação
+  patientSelect.innerHTML = ''; // Limpa a lista antes de atualizar
 
-  // Adiciona cada usuário conectado como uma opção
-  users.forEach(user => {
-    if (user.id) { // Verifica se o usuário tem um ID válido
-      const option = document.createElement('option');
-      option.value = user.id;
-      option.textContent = `Paciente ${user.id}`;
-      patientSelect.appendChild(option);
-    }
+  // Filtra pacientes e garante que sejam únicos
+  const uniquePatients = users.filter((user, index, self) =>
+    user.type === 'Paciente' && index === self.findIndex((u) => u.id === user.id) // Remove duplicatas
+  );
+
+  uniquePatients.forEach(patient => {
+    const option = document.createElement('option');
+    option.value = patient.id;
+    option.textContent = `Paciente ${patient.id}`;
+    patientSelect.appendChild(option);
   });
 
-  // Adiciona uma mensagem padrão se não houver pacientes disponíveis
-  if (users.length === 0) {
+  if (uniquePatients.length === 0) {
     const option = document.createElement('option');
     option.value = '';
     option.textContent = 'Nenhum paciente disponível';
     patientSelect.appendChild(option);
   }
 
-  console.log('Lista de pacientes atualizada:', users);
+  console.log('Lista de pacientes atualizada:', uniquePatients);
 }
 
 // Envia convite ao paciente selecionado
