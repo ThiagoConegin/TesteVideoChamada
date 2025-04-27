@@ -59,7 +59,7 @@ async function createAnswer() {
 }
 
 // Conexão ao servidor WebSocket
-const socket = new WebSocket('wss://seu-servidor-websocket.com'); // Altere para o endereço do servidor
+const socket = new WebSocket('wss://servidor-websocket-ijig.onrender.com'); // Altere para o endereço do servidor
 socket.onopen = () => {
   console.log('Conexão WebSocket estabelecida!');
 };
