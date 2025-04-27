@@ -15,16 +15,26 @@ const socket = new WebSocket(signalingServerUrl);
 socket.onopen = () => {
   console.log('Conexão WebSocket estabelecida!');
 
+  // Solicita ID ao usuário
   let userId = prompt('Insira seu ID único (ex.: Paciente1, Médico):');
-  const userType = userId.toLowerCase().includes('medico') ? 'Medico' : 'Paciente';
+  let userType;
 
+  // Verifica se é médico ou paciente
+  if (userId.toLowerCase().includes('medico')) {
+    userType = 'Medico';
+  } else {
+    userType = 'Paciente';
+  }
+
+  // Verifica se o ID é válido ou gera um automaticamente
   if (!userId || userId.trim() === '') {
     userId = `Usuario_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`ID gerado automaticamente: ${userId}`);
   }
 
+  // Envia mensagem de registro ao servidor
   sendMessage({ type: 'register', id: userId, typeOfUser: userType });
-  console.log(`Usuário registrado: ${userId} (${userType})`);
+  console.log(`Usuário registrado com ID: ${userId} (${userType})`);
 };
 
 socket.onmessage = async (event) => {
@@ -103,7 +113,7 @@ function updatePatientList(users) {
     patientSelect.appendChild(option);
   });
 
-  // Mensagem padrão se não houver pacientes disponíveis
+  // Mensagem padrão se não houver pacientes
   if (uniquePatients.length === 0) {
     const option = document.createElement('option');
     option.value = '';
