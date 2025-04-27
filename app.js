@@ -158,19 +158,47 @@ function createPeerConnection() {
 
 // Cria oferta SDP
 async function createOffer() {
+  console.log('Iniciando criação da oferta SDP...');
   peerConnection = createPeerConnection();
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  sendMessage({ type: 'offer', sdp: offer.sdp });
+
+  try {
+    const offer = await peerConnection.createOffer();
+    console.log('Oferta SDP criada:', offer);
+
+    await peerConnection.setLocalDescription(offer);
+    console.log('Descrição local (SDP) configurada.');
+
+    sendMessage({ type: 'offer', sdp: offer.sdp });
+    console.log('Oferta SDP enviada ao outro usuário.');
+  } catch (error) {
+    console.error('Erro ao criar oferta SDP:', error);
+  }
 }
 
 // Trata oferta SDP
 async function handleOffer(message) {
+  console.log('Oferta recebida:', message);
+
   peerConnection = createPeerConnection();
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  sendMessage({ type: 'answer', sdp: answer.sdp });
+
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription({
+      type: 'offer',
+      sdp: message.sdp
+    }));
+    console.log('Descrição remota (SDP) configurada.');
+
+    const answer = await peerConnection.createAnswer();
+    console.log('Resposta SDP criada:', answer);
+
+    await peerConnection.setLocalDescription(answer);
+    console.log('Descrição local (SDP) configurada.');
+
+    sendMessage({ type: 'answer', sdp: answer.sdp });
+    console.log('Resposta SDP enviada ao outro usuário.');
+  } catch (error) {
+    console.error('Erro ao tratar oferta:', error);
+  }
 }
 
 // Trata resposta SDP
@@ -180,6 +208,13 @@ async function handleAnswer(message) {
 
 // Adiciona candidatos ICE
 function handleCandidate(message) {
-  const candidate = new RTCIceCandidate(message.candidate);
-  peerConnection.addIceCandidate(candidate);
+  console.log('Candidato ICE recebido:', message.candidate);
+
+  try {
+    const candidate = new RTCIceCandidate(message.candidate);
+    peerConnection.addIceCandidate(candidate);
+    console.log('Candidato ICE adicionado com sucesso.');
+  } catch (error) {
+    console.error('Erro ao adicionar candidato ICE:', error);
+  }
 }

@@ -21,16 +21,14 @@ server.on('connection', (socket) => {
     }
   });
 
-  socket.on('close', () => {
-    // Remove o usuário desconectado
-    for (const id in users) {
-      if (users[id] === socket) {
-        delete users[id];
-        console.log(`Usuário desconectado: ${id}`);
-        break;
-      }
+  socket.on('message', (data) => {
+    const message = JSON.parse(data);
+    console.log('Mensagem recebida do cliente:', message);
+  
+    if (message.target && users[message.target]) {
+      users[message.target].send(JSON.stringify(message));
+      console.log(`Mensagem enviada para o destino: ${message.target}`);
     }
-    broadcastUserList(); // Atualiza lista quando alguém sai
   });
 
   function broadcastUserList() {
