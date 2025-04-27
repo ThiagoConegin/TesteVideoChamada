@@ -1,22 +1,19 @@
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+let localStream; // Fluxo de mídia local (médico ou paciente)
+let peerConnection; // Conexão WebRTC
 
-let localStream;     // Armazena o fluxo de mídia (vídeo e áudio) do usuário
-let peerConnection;  // Conexão WebRTC para a chamada
-
-// Configuração do ICE (STUN) para descobrir nós de rede
+// Configuração do ICE (STUN) para WebRTC
 const iceConfig = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' }
-  ]
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-// Conectar ao servidor WebSocket do Render para sinalização
+// URL do servidor WebSocket no Render
 const signalingServerUrl = 'wss://servidor-websocket-ijig.onrender.com';
 const socket = new WebSocket(signalingServerUrl);
 
 socket.onopen = () => {
-  console.log('Conexão com o WebSocket estabelecida!');
+  console.log('Conexão WebSocket estabelecida!');
 };
 
 socket.onmessage = async (event) => {
@@ -30,12 +27,18 @@ socket.onmessage = async (event) => {
     const message = JSON.parse(messageData);
     console.log('Mensagem recebida:', message);
 
-    if (!message.type) {
-      console.error('Mensagem recebida sem tipo definido:', message);
-      return;
-    }
-
     switch (message.type) {
+      case 'invite':
+        handleInvite(message);
+        break;
+      case 'accept':
+        console.log(`Paciente ${message.sender} aceitou o atendimento.`);
+        createOffer(); // Médico inicia a chamada
+        break;
+      case 'decline':
+        console.log(`Paciente ${message.sender} recusou o atendimento.`);
+        alert(`O paciente ${message.sender} recusou o atendimento.`);
+        break;
       case 'offer':
         handleOffer(message);
         break;
@@ -45,129 +48,118 @@ socket.onmessage = async (event) => {
       case 'candidate':
         handleCandidate(message);
         break;
+      case 'users':
+        updatePatientList(message.users);
+        break;
       default:
         console.error('Tipo de mensagem desconhecido:', message.type);
         break;
     }
   } catch (error) {
-    console.error('Erro ao processar a mensagem do WebSocket:', error);
+    console.error('Erro ao processar mensagem do WebSocket:', error);
   }
-}
+};
 
 function sendMessage(message) {
   socket.send(JSON.stringify(message));
 }
 
-// Solicitar acesso à câmera e microfone
+// Solicita a câmera e microfone
 async function getLocalMedia() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
     console.log('Acesso à câmera e microfone concedido!');
   } catch (error) {
-    console.error('Erro ao acessar a mídia:', error);
-    alert('Não foi possível acessar a câmera e o microfone. Verifique as permissões.');
+    console.error('Erro ao acessar mídia:', error);
+    alert('Por favor, conceda acesso à câmera e microfone.');
+  }
+}
+getLocalMedia();
+
+// Atualiza a lista de pacientes disponíveis
+function updatePatientList(users) {
+  const patientSelect = document.getElementById('patientSelect');
+  patientSelect.innerHTML = '';
+  users.forEach(user => {
+    const option = document.createElement('option');
+    option.value = user.id;
+    option.textContent = user.name || `Paciente ${user.id}`;
+    patientSelect.appendChild(option);
+  });
+  console.log('Lista de pacientes atualizada:', users);
+}
+
+// Envia convite ao paciente selecionado
+function startCall() {
+  const patientSelect = document.getElementById('patientSelect');
+  const selectedPatient = patientSelect.value;
+  if (!selectedPatient) {
+    alert('Selecione um paciente para iniciar o atendimento!');
+    return;
+  }
+  sendMessage({ type: 'invite', target: selectedPatient, sender: 'medico' });
+  console.log(`Convite enviado ao paciente ${selectedPatient}`);
+}
+
+// Lida com o convite recebido pelo paciente
+function handleInvite(message) {
+  const accept = confirm(`O médico ${message.sender} está convidando você para um atendimento. Deseja aceitar?`);
+  if (accept) {
+    sendMessage({ type: 'accept', sender: message.sender });
+    console.log('Convite aceito.');
+    createOffer(); // Paciente inicia a chamada
+  } else {
+    sendMessage({ type: 'decline', sender: message.sender });
+    console.log('Convite recusado.');
   }
 }
 
-// Chamada inicial para obter o stream local
-getLocalMedia();
-
-// Função para criar uma nova conexão WebRTC e incluir os streams
+// WebRTC: Cria a conexão
 function createPeerConnection() {
   const pc = new RTCPeerConnection(iceConfig);
 
-  // Adiciona os tracks do stream local para a conexão
   if (localStream) {
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
 
-  // Dispara o evento de novo candidato ICE
   pc.onicecandidate = (event) => {
     if (event.candidate) {
-      console.log('Enviando candidato ICE:', event.candidate);
       sendMessage({ type: 'candidate', candidate: event.candidate });
     }
   };
 
-  // Ao receber o stream remoto, mostra no elemento de vídeo
   pc.ontrack = (event) => {
-    console.log('Stream remoto recebido');
     remoteVideo.srcObject = event.streams[0];
   };
 
   return pc;
 }
 
-// Função chamada quando o usuário clica em "Iniciar Chamada"
-// O usuário que clica gera uma oferta de conexão
+// Cria oferta SDP
 async function createOffer() {
-  console.log("Criando oferta SDP...");
   peerConnection = createPeerConnection();
-
-  try {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    sendMessage({ type: 'offer', sdp: offer.sdp });
-  } catch (error) {
-    console.error('Erro ao criar oferta:', error);
-  }
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  sendMessage({ type: 'offer', sdp: offer.sdp });
 }
 
-// Trata a oferta recebida de outro usuário
+// Recebe oferta SDP
 async function handleOffer(message) {
-  console.log("Oferta recebida:", message);
-
-  if (!message.sdp || message.type !== 'offer') {
-    console.error('Mensagem de oferta inválida:', message);
-    return;
-  }
-
   peerConnection = createPeerConnection();
-
-  try {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription({
-      type: 'offer',
-      sdp: message.sdp
-    }));
-
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    sendMessage({ type: 'answer', sdp: answer.sdp });
-    console.log('Resposta SDP enviada:', answer.sdp);
-  } catch (error) {
-    console.error('Erro ao tratar oferta:', error);
-  }
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  sendMessage({ type: 'answer', sdp: answer.sdp });
 }
 
-// Trata a resposta à oferta enviada
+// Recebe resposta SDP
 async function handleAnswer(message) {
-  console.log("Resposta recebida:", message);
-  try {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription({
-      type: 'answer',
-      sdp: message.sdp
-    }));
-  } catch (error) {
-    console.error('Erro ao tratar resposta:', error);
-  }
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
 }
 
-// Trata os candidatos ICE enviados pelo outro usuário
+// Adiciona candidatos ICE
 function handleCandidate(message) {
-  console.log("Candidato ICE recebido:", message.candidate);
-
-  try {
-    if (message.candidate) {
-      const candidate = new RTCIceCandidate(message.candidate);
-      peerConnection.addIceCandidate(candidate);
-      console.log('Candidato ICE adicionado com sucesso:', candidate);
-    } else {
-      console.warn('Candidato ICE inválido:', message.candidate);
-    }
-  } catch (error) {
-    console.error('Erro ao adicionar candidato ICE:', error);
-  }
+  const candidate = new RTCIceCandidate(message.candidate);
+  peerConnection.addIceCandidate(candidate);
 }
-
-

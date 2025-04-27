@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teste Videochamada</title>
+  <title>Telemedicina - Atendimento</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #f2f2f2;
+      background-color: #f8f9fa;
     }
     h1 {
       color: #333;
@@ -20,8 +20,8 @@
       height: auto;
       background: black;
     }
-    #controls {      
-      margin-top: 15px;
+    #controls {
+      margin-top: 20px;
     }
     button {
       padding: 10px 20px;
@@ -31,14 +31,18 @@
   </style>
 </head>
 <body>
-  <h1>Videochamada com WebRTC</h1>
-  <div>
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
-  </div>
+  <h1>Atendimento Telemedicina</h1>
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+
   <div id="controls">
-    <button onclick="createOffer()">Iniciar Chamada</button>
+    <label for="patientSelect">Selecione o Paciente:</label>
+    <select id="patientSelect">
+      <!-- Pacientes serão adicionados dinamicamente -->
+    </select>
+    <button onclick="startCall()">Iniciar Atendimento</button>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>

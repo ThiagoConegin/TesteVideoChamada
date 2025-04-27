@@ -1,28 +1,35 @@
 const WebSocket = require('ws');
-
 const server = new WebSocket.Server({ port: process.env.PORT || 8080 });
+const users = {};
 
-server.on('connection', socket => {
-  console.log('Novo cliente conectado!');
+server.on('connection', (socket) => {
+  socket.on('message', (data) => {
+    const message = JSON.parse(data);
 
-  // Retransmitir mensagens entre os clientes conectados
-  socket.on('message', message => {
-    try {
-      const parsedMessage = JSON.parse(message);
-  
-      server.clients.forEach(client => {
-        if (client !== socket && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(parsedMessage)); // Retransmite com o formato correto
-        }
-      });
-    } catch (error) {
-      console.error('Erro ao retransmitir mensagem:', error);
+    if (message.type === 'register') {
+      users[message.id] = socket;
+      broadcastUserList();
+    }
+
+    if (message.target && users[message.target]) {
+      users[message.target].send(data);
     }
   });
 
   socket.on('close', () => {
-    console.log('Cliente desconectado!');
+    for (const id in users) {
+      if (users[id] === socket) {
+        delete users[id];
+        break;
+      }
+    }
+    broadcastUserList();
   });
-});
 
-console.log('Servidor WebSocket rodando!');
+  function broadcastUserList() {
+    const userList = Object.keys(users).map(id => ({ id }));
+    const message = JSON.stringify({ type: 'users', users: userList });
+    Object.values(users).forEach(userSocket => userSocket.send(message));
+  }
+});
+console.log('Servidor WebSocket rodando...');
