@@ -23,14 +23,21 @@ server.on('connection', (socket) => {
 
   socket.on('message', (data) => {
     const message = JSON.parse(data);
-    console.log('Mensagem recebida do cliente:', message);
+  
+    if (message.type === 'register') {
+      // Verifica se o ID já está registrado
+      if (!users[message.id]) {
+        users[message.id] = socket;
+        console.log(`Usuário registrado: ${message.id}`);
+        broadcastUserList(); // Atualiza a lista de usuários conectados
+      } else {
+        console.log(`ID já registrado: ${message.id}`);
+      }
+    }
   
     if (message.target && users[message.target]) {
-      // Reencaminha a mensagem para o destinatário correto
       users[message.target].send(JSON.stringify(message));
       console.log(`Mensagem enviada para o destino: ${message.target}`);
-    } else {
-      console.warn('Destino não encontrado ou mensagem mal formatada:', message);
     }
   });
 

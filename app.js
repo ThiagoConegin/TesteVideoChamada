@@ -89,15 +89,19 @@ getLocalMedia();
 // Atualiza a lista de usuários conectados no <select>
 function updatePatientList(users) {
   const patientSelect = document.getElementById('patientSelect');
-  patientSelect.innerHTML = ''; // Limpa a lista atual
+  patientSelect.innerHTML = ''; // Limpa a lista atual para evitar duplicação
 
+  // Adiciona cada usuário conectado como uma opção
   users.forEach(user => {
-    const option = document.createElement('option');
-    option.value = user.id;
-    option.textContent = `Paciente ${user.id}`;
-    patientSelect.appendChild(option);
+    if (user.id) { // Verifica se o usuário tem um ID válido
+      const option = document.createElement('option');
+      option.value = user.id;
+      option.textContent = `Paciente ${user.id}`;
+      patientSelect.appendChild(option);
+    }
   });
 
+  // Adiciona uma mensagem padrão se não houver pacientes disponíveis
   if (users.length === 0) {
     const option = document.createElement('option');
     option.value = '';
