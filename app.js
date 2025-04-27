@@ -93,10 +93,8 @@ function updatePatientList(users) {
   const patientSelect = document.getElementById('patientSelect');
   patientSelect.innerHTML = ''; // Limpa a lista antes de atualizar
 
-  // Filtra pacientes e garante que sejam únicos
-  const uniquePatients = users.filter((user, index, self) =>
-    user.type === 'Paciente' && index === self.findIndex((u) => u.id === user.id) // Remove duplicatas
-  );
+  // Filtra apenas usuários do tipo "Paciente"
+  const uniquePatients = users.filter(user => user.type === 'Paciente');
 
   uniquePatients.forEach(patient => {
     const option = document.createElement('option');
@@ -105,6 +103,7 @@ function updatePatientList(users) {
     patientSelect.appendChild(option);
   });
 
+  // Mensagem padrão se não houver pacientes disponíveis
   if (uniquePatients.length === 0) {
     const option = document.createElement('option');
     option.value = '';

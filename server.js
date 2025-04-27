@@ -10,9 +10,9 @@ server.on('connection', (socket) => {
     const message = JSON.parse(data);
 
     if (message.type === 'register') {
-      // Evita registrar IDs duplicados
+      // Evita duplicações e registra o tipo de usuário (médico ou paciente)
       if (!users[message.id]) {
-        users[message.id] = { socket, type: message.typeOfUser }; // Registra o tipo (médico ou paciente)
+        users[message.id] = { socket, type: message.typeOfUser }; // Adiciona tipo ao registro
         console.log(`Usuário registrado: ${message.id} (${message.typeOfUser})`);
         broadcastUserList();
       } else {
@@ -45,3 +45,5 @@ server.on('connection', (socket) => {
     Object.values(users).forEach(user => user.socket.send(message));
   }
 });
+
+console.log('Servidor WebSocket rodando...');
