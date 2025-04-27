@@ -19,24 +19,35 @@ socket.onopen = () => {
   console.log('Conexão com o WebSocket estabelecida!');
 };
 
-socket.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  console.log('Mensagem recebida:', message);
+socket.onmessage = async (event) => {
+  try {
+    let messageData = event.data;
 
-  // Diferenciação dos tipos de mensagem para tratamento apropriado
-  switch (message.type) {
-    case 'offer':
-      handleOffer(message);
-      break;
-    case 'answer':
-      handleAnswer(message);
-      break;
-    case 'candidate':
-      handleCandidate(message);
-      break;
-    default:
-      console.log('Tipo de mensagem desconhecido:', message.type);
-      break;
+    // Verifica se o dado recebido é um Blob
+    if (messageData instanceof Blob) {
+      messageData = await messageData.text(); // Converte Blob em texto
+    }
+
+    const message = JSON.parse(messageData); // Agora pode ser convertido em JSON
+    console.log('Mensagem recebida:', message);
+
+    // Trata os diferentes tipos de mensagens
+    switch (message.type) {
+      case 'offer':
+        handleOffer(message);
+        break;
+      case 'answer':
+        handleAnswer(message);
+        break;
+      case 'candidate':
+        handleCandidate(message);
+        break;
+      default:
+        console.log('Tipo de mensagem desconhecido:', message.type);
+        break;
+    }
+  } catch (error) {
+    console.error('Erro ao processar a mensagem do WebSocket:', error);
   }
 };
 
