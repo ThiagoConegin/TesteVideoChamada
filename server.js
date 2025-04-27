@@ -26,8 +26,11 @@ server.on('connection', (socket) => {
     console.log('Mensagem recebida do cliente:', message);
   
     if (message.target && users[message.target]) {
+      // Reencaminha a mensagem para o destinatário correto
       users[message.target].send(JSON.stringify(message));
       console.log(`Mensagem enviada para o destino: ${message.target}`);
+    } else {
+      console.warn('Destino não encontrado ou mensagem mal formatada:', message);
     }
   });
 

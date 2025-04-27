@@ -124,11 +124,13 @@ function startCall() {
 
 // Lida com o convite recebido pelo paciente
 function handleInvite(message) {
+  console.log('Convite recebido do médico:', message);
+
   const accept = confirm(`O médico ${message.sender} está convidando você para um atendimento. Deseja aceitar?`);
   if (accept) {
-    sendMessage({ type: 'accept', sender: message.sender });
+    sendMessage({ type: 'accept', sender: message.sender }); // Paciente aceita o convite
     console.log('Convite aceito.');
-    createOffer();
+    createOffer(); // Inicia a conexão WebRTC
   } else {
     sendMessage({ type: 'decline', sender: message.sender });
     console.log('Convite recusado.');
